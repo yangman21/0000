@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>深夜不睡覺：熬夜決策大師</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased pb-12">
+
+  <nav class="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+      <span class="text-xl font-black bg-gradient-to-r text-transparent bg-clip-text from-indigo-400 to-cyan-400">🌙 熬夜決策大師</span>
+      <span class="text-xs text-slate-500 border border-slate-700 px-2 py-1 rounded-full">GitHub Open Source Project</span>
+    </div>
+  </nav>
+
+  <main class="max-w-6xl mx-auto px-4 mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+    
+    <div class="lg:col-span-1 space-y-6">
+      <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
+        <h2 class="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2">⏱️ 狀態輸入</h2>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm text-slate-400 mb-1">明天第一堂課時間 (24小時制)</label>
+            <input type="number" id="classTime" min="0" max="23" value="8" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-sm text-slate-400 mb-1">剩餘工作量估計 (小時)</label>
+            <input type="number" id="remainingWork" min="0" step="0.5" value="3" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <div class="flex justify-between text-sm text-slate-400 mb-1">
+              <label>當前精神狀態</label>
+              <span id="mentalVal" class="text-indigo-400 font-bold">7 分</span>
+            </div>
+            <input type="range" id="mentalState" min="1" max="10" value="7" oninput="document.getElementById('mentalVal').innerText = this.value + ' 分'" class="w-full accent-indigo-500">
+          </div>
+          <button onclick="calculateDecision()" class="w-full bg-indigo-600 hover:bg-indigo-500 transition-colors text-white font-bold py-3 rounded-xl mt-2 shadow-lg shadow-indigo-600/20">
+            啟動鐵面裁決
+          </button>
+        </div>
+      </div>
+
+      <div id="decisionResult" class="hidden p-5 rounded-2xl border transition-all duration-300">
+        <h3 class="text-sm uppercase tracking-wider font-bold opacity-70">裁決結果</h3>
+        <p id="decisionTitle" class="text-2xl font-black my-2"></p>
+        <p id="decisionReason" class="text-sm leading-relaxed opacity-90"></p>
+      </div>
+    </div>
+
+    <div class="lg:col-span-2 space-y-8">
+      
+      <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg font-bold text-slate-200 flex items-center gap-2">🍔 逢甲宵夜雷達 (Places API 架構)</h2>
+          <button onclick="fetchNearbySnacks()" class="bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300">搜尋周邊</button>
+        </div>
+        <p class="text-xs text-slate-500 mb-4">預留 Google Places API (Nearby Search) 架構，可選擇景點美食進行點對點對比。</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="snackContainer">
+          <div class="border border-dashed border-slate-700 rounded-xl p-4 text-center text-slate-500 text-sm">
+            等待載入鄰近逢甲美食...
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg font-bold text-slate-200 flex items-center gap-2">🎵 AI 精選睡前舒壓影音</h2>
+          <button onclick="fetchRelaxingVideos()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors shadow-lg shadow-emerald-600/20">
+            開始 AI 掃描
+          </button>
+        </div>
+        <p class="text-xs text-slate-500 mb-4">技術流程：YouTube API 搜尋 ➔ 字幕音訊下載 ➔ Whisper 轉文字 ➔ OpenAI GPT 內容過濾與舒壓評分（排除刺激/新聞類）。</p>
+
+        <div class="space-y-3" id="videoContainer">
+          <div class="text-center text-sm text-slate-500 py-6 border border-dashed border-slate-700 rounded-xl">
+            點擊「開始 AI 掃描」獲取經 Whisper + GPT 深度分析的前 10 名催眠影音
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    // 1. 核心功能區塊：分析使用者是否該睡
+    function calculateDecision() {
+      const classTime = parseFloat(document.getElementById('classTime').value);
+      const remainingWork = parseFloat(document.getElementById('remainingWork').value);
+      const mentalState = parseInt(document.getElementById('mentalState').value);
+      
+      const resultBox = document.getElementById('decisionResult');
+      const title = document.getElementById('decisionTitle');
+      const reason = document.getElementById('decisionReason');
+      
+      resultBox.classList.remove('hidden');
+      
+      // 邏輯規則 A: 效率考量 (精神狀態極差 < 5分)
+      if (mentalState < 5) {
+        title.innerText = "強制睡覺 🚨";
+        reason.innerText = "你的當前精神狀態極差（低於 5 分），此時大腦效率低下。強行熬夜只會浪費時間在 Debug 或是看著螢幕發呆，乖乖去睡覺，明天起來效率高三倍。";
+        resultBox.className = "p-5 rounded-2xl border bg-red-500/10 text-red-400 border-red-500/30";
+        return;
+      }
+      
+      // 邏輯規則 B: 早八優先 (明天有早八 9點前，且剩餘工作 > 2小時)
+      if (classTime < 9 && remainingWork > 2) {
+        title.innerText = "強制睡覺 ⏰";
+        reason.innerText = "明天有早八關鍵課堂，且你手邊還有高達 " + remainingWork + " 小時的工作。此時熬夜必定導致明天遲到或上課嚴重斷片。請即刻就寢，明天調早鬧鐘起來補工。";
+        resultBox.className = "p-5 rounded-2xl border bg-orange-500/10 text-orange-400 border-orange-500/30";
+        return;
+      }
+      
+      // 邏輯規則 C: 肝帝模式 (精神尚可 >= 5分、明天沒早八，且工作量大)
+      if (mentalState >= 5 && classTime >= 9 && remainingWork >= 3) {
+        title.innerText = "進入肝帝衝刺模式 🔥";
+        reason.innerText = "環境條件達標！明天沒有早八奪命連環催，你目前的精神狀況適中（" + mentalState + "分），且工作量堆積如山。泡杯熱茶，今晚把進度徹底解決掉吧！";
+        resultBox.className = "p-5 rounded-2xl border bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
+        return;
+      }
+      
+      // 預設安全狀態
+      title.innerText = "建議溫和收尾後就寢 😴";
+      reason.innerText = "目前沒有迫切的爆肝需求，明天也沒有早八壓力。建議再把手邊工作推進 30 分鐘，完成一個段落就可以舒服地去睡覺了。";
+      resultBox.className = "p-5 rounded-2xl border bg-indigo-500/10 text-indigo-400 border-indigo-500/30";
+    }
+
+    // 2. 擴充功能區塊：Google Places API 預留架構
+    function fetchNearbySnacks() {
+      const container = document.getElementById('snackContainer');
+      container.innerHTML = `<div class="col-span-2 text-center text-sm text-cyan-400 py-4">正在透過後端向 Google Places API 請求逢甲周邊美食...</div>`;
+      
+      // 這裡模擬從後端 Places API 拿回來的對比資料
+      setTimeout(() => {
+        container.innerHTML = `
+          <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+            <div class="flex justify-between items-start"><span class="font-bold text-slate-200">逢甲知名深夜大腸包小腸</span><span class="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded">美食</span></div>
+            <p class="text-xs text-slate-400 mt-1">距離逢甲大學：200公尺</p>
+            <p class="text-xs text-amber-400 mt-2">★ 4.2 (Google Map 評論)</p>
+          </div>
+          <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+            <div class="flex justify-between items-start"><span class="font-bold text-slate-200">福星路深夜爆汁豆漿店</span><span class="text-xs bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded">宵夜點心</span></div>
+            <p class="text-xs text-slate-400 mt-1">距離逢甲大學：450公尺</p>
+            <p class="text-xs text-amber-400 mt-2">★ 4.5 (適合通宵微調電路後补充體力)</p>
+          </div>
+        `;
+      }, 1000);
+
+      /* // 【技術預留：GitHub 部署時正確的後端 Fetch 寫法】
+      fetch('/api/nearby-search?keyword=宵夜&lat=24.179&lng=120.646') // 逢甲大學座標
+        .then(res => res.json())
+        .then(data => { // 渲染對比邏輯 })
+      */
+    }
+
+    // 3. 擴充功能區塊：YouTube + OpenAI Pipeline 模擬展示
+    function fetchRelaxingVideos() {
+      const container = document.getElementById('videoContainer');
+      container.innerHTML = `<div class="text-center text-sm text-emerald-400 py-6">後端正在執行：YouTube API 搜尋 ➔ 抓取音訊 ➔ Whisper 轉譯 ➔ OpenAI 舒壓診斷中...</div>`;
+      
+      // 模擬經由後端大模型管線處理後輸出的前 10 名（這裡放 2 個作為排版範例）
+      setTimeout(() => {
+        container.innerHTML = `
+          <div class="bg-slate-800/40 border border-slate-700/60 p-4 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded">舒壓指數 9.5/10</span>
+                <span class="text-xs text-slate-400">觀看次數: 1,240,500 次</span>
+              </div>
+              <h4 class="font-bold text-slate-200">【秋夜雨聲】高音質阿爾法波深度催眠冥想鋼琴</h4>
+              <p class="text-xs text-slate-400">頻道名稱：Lofi Sleep Oasis • 描述：結合大自然真實雨聲與溫柔鋼琴</p>
+              <p class="text-xs text-amber-200/80 bg-amber-500/10 p-2 rounded mt-2">💡 <b>AI 評鑑理由：</b> 音訊經 Whisper 解析無任何突兀人聲或高頻噪音，GPT 語意分析判定結構純淨，能有效降低大腦皮質活躍度，極度推薦睡前聆聽。</p>
+            </div>
+          </div>
+
+          <div class="bg-slate-800/40 border border-slate-700/60 p-4 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded">舒壓指數 8.9/10</span>
+                <span class="text-xs text-slate-400">觀看次數: 450,200 次</span>
+              </div>
+              <h4 class="font-bold text-slate-200">深海白噪音：極簡宇宙環境音（無廣告干擾）</h4>
+              <p class="text-xs text-slate-400">頻道名稱：Cosmic Soundscapes • 描述：適合失眠者與高度壓力學生的白噪音</p>
+              <p class="text-xs text-amber-200/80 bg-amber-500/10 p-2 rounded mt-2">💡 <b>AI 評鑑理由：</b> 成功通過過濾機制，已排除任何遊戲或搞笑情節。音訊波形平穩，具備極佳的雜音遮蔽效果，適合光電系期末考高壓下的催眠引導。</p>
+            </div>
+          </div>
+        `;
+      }, 1500);
+    }
+  </script>
+</body>
+</html>
+my-sleep-app/
+├── .gitignore               <-- 必須把 .env 放進去，防止 API Key 被推上 GitHub
+├── .env                     <-- 存放你的 OPENAI_API_KEY, YOUTUBE_API_KEY
+├── package.json
+├── server.js                <-- 後端 API 處理中心 (Node.js)
+└── public/
+    └── index.html           <-- 就是上面的前端 HTML 檔案
+// server.js 核心邏輯參考
+const { OpenAI } = require("openai");
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+app.get("/api/relax-videos", async (req, res) => {
+  try {
+    // 1. 呼叫 YouTube Data API 搜尋特定關鍵字
+    const keywords = ["輕音樂", "睡眠音樂", "白噪音", "雨聲", "鋼琴音樂", "冥想音樂"];
+    const searchKeyword = keywords[Math.floor(Math.random() * keywords.length)];
+    
+    const ytResponse = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(searchKeyword)}&type=video&maxResults=15&key=${process.env.YOUTUBE_API_KEY}`);
+    const ytData = await ytResponse.json();
+    
+    let recommendedVideos = [];
+
+    for (let video of ytData.items) {
+      const videoId = video.id.videoId;
+      const title = video.snippet.title;
+      const description = video.snippet.description;
+
+      // 2. 下載字幕/音訊 並透過 Whisper 轉文字
+      // 提示：實務上可以先抓取 YouTube 內建的 Tracks (字幕)，若無字幕，則利用 ytdl-core 下載音訊片段，
+      // 丟給 OpenAI Whisper API：
+      /*
+      const transcription = await openai.audio.transcriptions.create({
+        file: fs.createReadStream(`audio_${videoId}.mp3`),
+        model: "whisper-1",
+      });
+      */
+      const mockText = "這是一段平穩、緩慢的下雨聲與輕柔的鋼琴旋律，沒有任何說話聲..."; 
+
+      // 3. 呼叫 GPT 進行安全過濾與舒壓評分
+      const aiPrompt = `
+        你是一個專業的睡眠與物理治療 AI 助手。請分析以下 YouTube 影片內容（含標題、描述與字幕文本）：
+        標題：${title}
+        描述：${description}
+        轉譯文字：${mockText}
+
+        請依據以下標準審查：
+        1. 嚴格排除遊戲、新聞、搞笑、驚悚或刺激類影片。如果是這類影片，請直接判定不適合。
+        2. 根據舒壓程度給予 1~10 分的評分。
+        3. 給出 50 字以內的推薦或拒絕理由。
+
+        請嚴格以 JSON 格式輸出：
+        {
+          "suitable": true 或 false,
+          "score": 數字(1-10),
+          "reason": "推薦理由"
+        }
+      `;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o", // 或是使用 2026 年最新穩定的模型
+        messages: [{ role: "user", content: aiPrompt }],
+        response_format: { type: "json_object" }
+      });
+
+      const aiResult = JSON.parse(completion.choices[0].message.content);
+
+      // 4. 篩選並放入推薦清單
+      if (aiResult.suitable) {
+        recommendedVideos.push({
+          id: videoId,
+          title,
+          channel: video.snippet.channelTitle,
+          score: aiResult.score,
+          reason: aiResult.reason
+        });
+      }
+    }
+
+    // 5. 排序取前 10 名回傳給前端
+    recommendedVideos.sort((a, b) => b.score - a.score);
+    res.json(recommendedVideos.slice(0, 10));
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
